@@ -36,7 +36,7 @@
     "Enrique Paredes <enrique@iknite.com>"
   ],
   "dependencies": {
-    "wd": "^1.11.0"
+    "selenium-webdriver": "^4.0.0-alpha.1"
   },
   "devDependencies": {
     "grunt": "~1.0.3",

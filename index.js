@@ -1,28 +1,26 @@
-var wd = require('wd');
+var wd = require('selenium-webdriver');
 var urlModule = require('url');
 var urlparse = urlModule.parse;
 var urlformat = urlModule.format;
 
-var WebDriverInstance = function (baseBrowserDecorator, args, logger) {
-  var log = logger.create('WebDriver');
+var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
+  var log = logger.create('SeleniumGrid');
 
-  var config = args.config || {
-    hostname: '127.0.0.1',
-    port: 4444
-  };
+  var gridUrl = args.gridUrl || 'http://localhost:4444/wd/hub';
   var self = this;
 
   // Intialize with default values
   var spec = {
     platform: 'ANY',
     testName: 'Karma test',
-    tags: [],
-    version: ''
+    version: 'ANY'
   };
 
   Object.keys(args).forEach(function (key) {
     var value = args[key];
     switch (key) {
+    case 'applicationName':
+        break;
     case 'browserName':
       break;
     case 'platform':
@@ -33,7 +31,7 @@ var WebDriverInstance = function (baseBrowserDecorator, args, logger) {
       break;
     case 'version':
       break;
-    case 'config':
+    case 'gridUrl':
       // ignore
       return;
     }
@@ -44,17 +42,25 @@ var WebDriverInstance = function (baseBrowserDecorator, args, logger) {
     throw new Error('browserName is required!');
   }
 
+  const caps = new wd.Capabilities(spec);
+  caps.setAcceptInsecureCerts(true);
+
   baseBrowserDecorator(this);
 
-  this.name = spec.browserName + ' via Remote WebDriver';
+  if (spec.applicationName) {
+    this.name = spec.applicationName + ' via Selenium Grid';
+  } else {
+    this.name = spec.browserName + ' (' + (spec.platform || spec.platformName) +
+      ') via Selenium Grid';
+  }
 
   // Handle x-ua-compatible option same as karma-ie-launcher(copy&paste):
   //
   // Usage :
   //   customLaunchers: {
   //     IE9: {
-  //       base: 'WebDriver',
-  //       config: webdriverConfig,
+  //       base: 'SeleniumGrid',
+  //       gridUrl: 'http://your-grid.example.com:4444/wd/hub',
   //       browserName: 'internet explorer',
   //       'x-ua-compatible': 'IE=EmulateIE9'
   //     }
@@ -70,6 +76,7 @@ var WebDriverInstance = function (baseBrowserDecorator, args, logger) {
   }
 
   this._start = function (url) {
+    log.info(url);
     var urlObj = urlparse(url, true);
 
     handleXUaCompatible(spec, urlObj);
@@ -77,28 +84,42 @@ var WebDriverInstance = function (baseBrowserDecorator, args, logger) {
     delete urlObj.search; //url.format does not want search attribute
     url = urlformat(urlObj);
 
-    log.debug('WebDriver config: ' + JSON.stringify(config));
+    log.debug('Grid URL: ' + gridUrl);
     log.debug('Browser capabilities: ' + JSON.stringify(spec));
 
-    self.driver = wd.remote(config, 'promiseChain');
-    self.browser = self.driver.init(spec);
+    self.browser = new wd.Builder().usingServer(gridUrl)
+      .withCapabilities(caps).build();
 
     var interval = args.pseudoActivityInterval && setInterval(function() {
       log.debug('Imitate activity');
-      self.browser.title();
+      self.browser.getTitle()
+        .catch((err) => {
+          log.error('Caught error for browser ' + 
+            this.name + ': ' + err);
+        });
     }, args.pseudoActivityInterval);
 
     self.browser
         .get(url)
-        .done();
+        .then(() => {
+          log.debug(this.name + ' started');
+        })
+        .catch((err) => {
+          log.error(this.name + ' was unable to start: ' + err);
+        });
 
     self._process = {
       kill: function() {
         interval && clearInterval(interval);
-        self.driver.quit(function() {
-          log.info('Killed ' + spec.testName + '.');
-          self._onProcessExit(self.error ? -1 : 0, self.error);
-        });
+        self.browser.close()
+          .then(() => self.browser.quit())
+          .then(() => {
+            log.info('Killed ' + this.name + '.');
+            self._onProcessExit(self.error ? -1 : 0, self.error);
+          })
+          .catch(() => {
+            log.info('Error stopping browser ' + this.name);
+          });
       }
     };
   };
@@ -107,20 +128,20 @@ var WebDriverInstance = function (baseBrowserDecorator, args, logger) {
   this._onKillTimeout = function(){};
 };
 
-WebDriverInstance.prototype = {
-  name: 'WebDriver',
+SeleniumGridInstance.prototype = {
+  name: 'SeleniumGrid',
 
   DEFAULT_CMD: {
-    linux: require('wd').path,
-    darwin: require('wd').path,
-    win32: require('wd').path
+    linux: undefined,
+    darwin: undefined,
+    win32: undefined
   },
-  ENV_CMD: 'WEBDRIVER_BIN'
+  ENV_CMD: 'SeleniumGrid_BIN'
 };
 
-WebDriverInstance.$inject = ['baseBrowserDecorator', 'args', 'logger'];
+SeleniumGridInstance.$inject = ['baseBrowserDecorator', 'args', 'logger'];
 
 // PUBLISH DI MODULE
 module.exports = {
-  'launcher:WebDriver': ['type', WebDriverInstance]
+  'launcher:SeleniumGrid': ['type', SeleniumGridInstance]
 };
