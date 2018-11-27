@@ -93,7 +93,8 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     self.browser = new wd.Builder().usingServer(gridUrl)
       .withCapabilities(caps).build();
 
-    var interval = args.pseudoActivityInterval && setInterval(function() {
+    var interval = spec.browserName !== 'internet explorer' && 
+        args.pseudoActivityInterval && setInterval(function() {
       log.debug('Imitate activity');
       self.browser.getTitle()
         .catch((err) => {
