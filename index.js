@@ -32,6 +32,7 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     case 'version':
       break;
     case 'gridUrl':
+    case 'setAcceptInsecureCerts':
       // ignore
       return;
     }
@@ -43,7 +44,9 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
   }
 
   const caps = new wd.Capabilities(spec);
-  caps.setAcceptInsecureCerts(true);
+  if (args.setAcceptInsecureCerts) {
+    caps.setAcceptInsecureCerts(args.setAcceptInsecureCerts);
+  }
 
   baseBrowserDecorator(this);
 
@@ -95,17 +98,17 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
       self.browser.getTitle()
         .catch((err) => {
           log.error('Caught error for browser ' + 
-            this.name + ': ' + err);
+            self.name + ': ' + err);
         });
     }, args.pseudoActivityInterval);
 
     self.browser
         .get(url)
         .then(() => {
-          log.debug(this.name + ' started');
+          log.debug(self.name + ' started');
         })
         .catch((err) => {
-          log.error(this.name + ' was unable to start: ' + err);
+          log.error(self.name + ' was unable to start: ' + err);
         });
 
     self._process = {
@@ -114,11 +117,11 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
         self.browser.close()
           .then(() => self.browser.quit())
           .then(() => {
-            log.info('Killed ' + this.name + '.');
+            log.info('Killed ' + self.name + '.');
             self._onProcessExit(self.error ? -1 : 0, self.error);
           })
           .catch(() => {
-            log.info('Error stopping browser ' + this.name);
+            log.info('Error stopping browser ' + self.name);
           });
       }
     };
