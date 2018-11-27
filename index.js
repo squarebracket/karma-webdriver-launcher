@@ -79,7 +79,6 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
   }
 
   this._start = function (url) {
-    log.info(url);
     var urlObj = urlparse(url, true);
 
     handleXUaCompatible(spec, urlObj);
