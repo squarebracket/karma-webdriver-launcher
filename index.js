@@ -1,4 +1,5 @@
 var wd = require('selenium-webdriver');
+var firefox = require('selenium-webdriver/firefox');
 var urlModule = require('url');
 var urlparse = urlModule.parse;
 var urlformat = urlModule.format;
@@ -20,7 +21,7 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     var value = args[key];
     switch (key) {
     case 'applicationName':
-        break;
+      break;
     case 'browserName':
       break;
     case 'platform':
@@ -43,11 +44,6 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     throw new Error('browserName is required!');
   }
 
-  const caps = new wd.Capabilities(spec);
-  if (args.setAcceptInsecureCerts) {
-    caps.setAcceptInsecureCerts(args.setAcceptInsecureCerts);
-  }
-
   baseBrowserDecorator(this);
 
   if (spec.applicationName) {
@@ -56,6 +52,24 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     this.name = spec.browserName + ' (' + (spec.platform || spec.platformName) +
       ') via Selenium Grid';
   }
+
+  const caps = new wd.Capabilities(spec);
+  if (args.setAcceptInsecureCerts) {
+    log.info('Setting insecure certs for ' + self.name);
+    caps.setAcceptInsecureCerts(args.setAcceptInsecureCerts);
+  }
+
+  const firefoxOptions = new firefox.Options();
+  //firefoxOptions.setPreference('browser.shell.checkDefaultBrowser', false);
+  //firefoxOptions.setPreference('browser.bookmarks.restore_default_bookmarks', false);
+  //firefoxOptions.setPreference('dom.disable_open_during_load', false);
+  //firefoxOptions.setPreference('dom.max_script_run_time', 0);
+  //firefoxOptions.setPreference('extensions.autoDisableScopes', 0);
+  //firefoxOptions.setPreference('browser.tabs.remote.autostart', false);
+  //firefoxOptions.setPreference('browser.tabs.remote.autostart.2', false);
+  //firefoxOptions.setPreference('extensions.enabledScopes', 15);
+  //firefoxOptions.setPreference('media.eme.enabled', true);
+  //firefoxOptions.setPreference('media.eme.hdcp-policy-check.enabled', true);
 
   // Handle x-ua-compatible option same as karma-ie-launcher(copy&paste):
   //
@@ -89,7 +103,9 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     log.debug('Grid URL: ' + gridUrl);
     log.debug('Browser capabilities: ' + JSON.stringify(spec));
 
-    self.browser = new wd.Builder().usingServer(gridUrl)
+    self.browser = new wd.Builder()
+      .setFirefoxOptions(firefoxOptions)
+      .usingServer(gridUrl)
       .withCapabilities(caps).build();
 
     var interval = spec.browserName !== 'internet explorer' && 
@@ -109,6 +125,8 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
         })
         .catch((err) => {
           log.error(self.name + ' was unable to start: ' + err);
+          self._done('failure');
+          self._onProcessExit(self.error ? -1 : 0, self.error);
         });
 
     self._process = {
@@ -118,10 +136,13 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
           .then(() => self.browser.quit())
           .then(() => {
             log.info('Killed ' + self.name + '.');
+            self._done();
             self._onProcessExit(self.error ? -1 : 0, self.error);
           })
           .catch(() => {
             log.info('Error stopping browser ' + self.name);
+            self._done();
+            self._onProcessExit(self.error ? -1 : 0, self.error);
           });
       }
     };
