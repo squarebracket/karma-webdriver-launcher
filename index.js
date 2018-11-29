@@ -1,5 +1,7 @@
 var wd = require('selenium-webdriver');
 var firefox = require('selenium-webdriver/firefox');
+var chrome = require('selenium-webdriver/chrome');
+var ie = require('selenium-webdriver/ie');
 var urlModule = require('url');
 var urlparse = urlModule.parse;
 var urlformat = urlModule.format;
@@ -35,6 +37,9 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     case 'gridUrl':
     case 'setAcceptInsecureCerts':
     case 'firefoxPreferences':
+    case 'firefoxProfile':
+    case 'arguments':
+    case 'extensions':
       // ignore
       return;
     }
@@ -60,7 +65,10 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     caps.setAcceptInsecureCerts(args.setAcceptInsecureCerts);
   }
 
-  const firefoxOptions = new firefox.Options(args.firefoxPreferences);
+  const firefoxOptions = new firefox.Options();
+  const chromeOptions = new chrome.Options();
+  const ieOptions = new ie.Options();
+
   // these prefs are what's set by karma-firefox-launcher, which i've
   // mindlessly copied here
   firefoxOptions.setPreference('browser.shell.checkDefaultBrowser', false);
@@ -77,6 +85,26 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
       firefoxOptions.setPreference(pref, args.firefoxPreferences[pref]);
     });
   }
+  if (args.arguments && args.browserName === 'firefox') {
+    firefoxOptions.addArguments(args.arguments);
+  }
+  if (args.extensions && args.browserName === 'firefox') {
+    firefoxOptions.addExtensions(args.extensions);
+  }
+
+  if (args.arguments && args.browserName === 'chrome') {
+    chromeOptions.addArguments(args.arguments);
+  }
+  if (args.extensions && args.browserName === 'chrome') {
+    chromeOptions.addExtensions(args.extensions);
+  }
+
+  if (args.arguments && args.browserName === 'internet explorer') {
+    ieOptions.addArguments(args.arguments);
+  }
+
+  ieOptions.browserAttachTimeout(30000);
+  ieOptions.requireWindowFocus(true);
 
   // Handle x-ua-compatible option same as karma-ie-launcher(copy&paste):
   //
