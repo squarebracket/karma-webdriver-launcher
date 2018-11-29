@@ -34,6 +34,7 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
       break;
     case 'gridUrl':
     case 'setAcceptInsecureCerts':
+    case 'firefoxPreferences':
       // ignore
       return;
     }
@@ -59,17 +60,23 @@ var SeleniumGridInstance = function (baseBrowserDecorator, args, logger) {
     caps.setAcceptInsecureCerts(args.setAcceptInsecureCerts);
   }
 
-  const firefoxOptions = new firefox.Options();
-  //firefoxOptions.setPreference('browser.shell.checkDefaultBrowser', false);
-  //firefoxOptions.setPreference('browser.bookmarks.restore_default_bookmarks', false);
-  //firefoxOptions.setPreference('dom.disable_open_during_load', false);
-  //firefoxOptions.setPreference('dom.max_script_run_time', 0);
-  //firefoxOptions.setPreference('extensions.autoDisableScopes', 0);
-  //firefoxOptions.setPreference('browser.tabs.remote.autostart', false);
-  //firefoxOptions.setPreference('browser.tabs.remote.autostart.2', false);
-  //firefoxOptions.setPreference('extensions.enabledScopes', 15);
-  //firefoxOptions.setPreference('media.eme.enabled', true);
-  //firefoxOptions.setPreference('media.eme.hdcp-policy-check.enabled', true);
+  const firefoxOptions = new firefox.Options(args.firefoxPreferences);
+  // these prefs are what's set by karma-firefox-launcher, which i've
+  // mindlessly copied here
+  firefoxOptions.setPreference('browser.shell.checkDefaultBrowser', false);
+  firefoxOptions.setPreference('browser.bookmarks.restore_default_bookmarks', false);
+  firefoxOptions.setPreference('dom.disable_open_during_load', false);
+  firefoxOptions.setPreference('dom.max_script_run_time', 0);
+  firefoxOptions.setPreference('extensions.autoDisableScopes', 0);
+  firefoxOptions.setPreference('browser.tabs.remote.autostart', false);
+  firefoxOptions.setPreference('browser.tabs.remote.autostart.2', false);
+  firefoxOptions.setPreference('extensions.enabledScopes', 15);
+  if (args.firefoxPreferences) {
+    Object.keys(args.firefoxPreferences).forEach((pref) => {
+      log.info('setting pref ' + pref + ' to ' + args.firefoxPreferences[pref]);
+      firefoxOptions.setPreference(pref, args.firefoxPreferences[pref]);
+    });
+  }
 
   // Handle x-ua-compatible option same as karma-ie-launcher(copy&paste):
   //
